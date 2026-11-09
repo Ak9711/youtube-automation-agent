@@ -48,6 +48,8 @@ class ContentStrategyAgent {
   }
 
   async fetchYouTubeTrends() {
+    // Without a YouTube connection, topics come from the AI provider only.
+    if (!this.credentials.hasYouTubeConnection?.()) return [];
     // Use YouTube API to fetch trending videos
     const youtube = this.credentials.getYouTubeClient();
     

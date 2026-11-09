@@ -27,6 +27,7 @@ const { AudienceEngagementService } = require('./utils/audience-engagement-servi
 const { GrowthExperimentService } = require('./utils/growth-experiment-service');
 const { AITextService } = require('./utils/ai-text-service');
 const { DiscoverabilityService } = require('./utils/discoverability-service');
+const { MasterAIAgent } = require('./agents/master-ai-agent');
 const { version } = require('./package.json');
 const chalk = require('chalk');
 
@@ -56,6 +57,7 @@ class YouTubeAutomationAgent {
     this.experiments = null;
     this.discoverability = null;
     this.setupRequired = false;
+    this.master = null;
   }
 
   async initialize() {
@@ -125,6 +127,9 @@ class YouTubeAutomationAgent {
         this.agents.publishing,
         { logger: this.logger }
       );
+
+      this.master = new MasterAIAgent(this, { logger: new Logger('MasterAIAgent') });
+      await this.master.initialize();
 
       // Show which pipeline stages will run for real vs. be simulated
       const capabilities = await this.logCapabilitySummary();
@@ -862,6 +867,57 @@ class YouTubeAutomationAgent {
         return res.sendFile(resolved);
       } catch (_error) {
         return res.status(404).json({ error: 'Asset not found' });
+      }
+    });
+
+    // ── Master AI Agent: one-click idea -> finished MP4 ──────────────────
+    const requireMaster = (res) => {
+      if (this.master) return true;
+      res.status(503).json({ success: false, error: 'Finish setup (an AI provider key) with npm run walkthrough first' });
+      return false;
+    };
+
+    this.app.get('/api/master/skills', async (_req, res) => {
+      if (!requireMaster(res)) return;
+      res.json({
+        skills: this.master.listSkills(),
+        musicTracks: await this.master.listMusicTracks(),
+        youtubeConnected: Boolean(this.credentials?.hasYouTubeConnection?.()),
+        busy: Boolean(this.master.activeRunId)
+      });
+    });
+
+    this.app.get('/api/master/runs', (_req, res) => {
+      if (!requireMaster(res)) return;
+      res.json({ runs: this.master.listRuns() });
+    });
+
+    this.app.post('/api/master/runs', protect, async (req, res) => {
+      if (!requireMaster(res)) return;
+      try {
+        const run = await this.master.startRun(req.body || {});
+        res.status(202).json({ success: true, run });
+      } catch (error) {
+        res.status(error.status || 500).json({ success: false, error: error.message });
+      }
+    });
+
+    this.app.get('/api/master/runs/:runId', (req, res) => {
+      if (!requireMaster(res)) return;
+      const run = this.master.getRun(req.params.runId);
+      if (!run) return res.status(404).json({ error: 'Run not found' });
+      return res.json({ run });
+    });
+
+    this.app.get('/api/master/runs/:runId/download/:kind', async (req, res) => {
+      if (!requireMaster(res)) return;
+      const filePath = this.master.resolveDownload(req.params.runId, req.params.kind);
+      if (!filePath) return res.status(404).json({ error: 'File not found' });
+      try {
+        await fs.access(filePath);
+        return res.download(filePath, path.basename(filePath));
+      } catch (_error) {
+        return res.status(404).json({ error: 'File not found' });
       }
     });
 

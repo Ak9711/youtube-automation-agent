@@ -592,11 +592,9 @@ class CredentialManager {
   }
 
   getMissingCredentials() {
+    // YouTube is optional: without it videos are generated and exported
+    // locally (data/videos/) and only uploading/analytics are disabled.
     const missing = [];
-
-    if (!this.credentials.youtube) {
-      missing.push('youtube');
-    }
 
     if (!this.hasAITextProvider()) {
       missing.push('an AI provider (OpenAI, Gemini, OpenRouter, Kimi, MiMo, GLM, DeepSeek, or MiniMax)');
@@ -621,13 +619,16 @@ class CredentialManager {
       return false;
     }
 
-    // Validate YouTube tokens
-    if (!this.tokens.youtube) {
-      console.log(chalk.yellow('\n⚠️  YouTube authentication required'));
-      return false;
+    if (!this.hasYouTubeConnection()) {
+      console.log(chalk.yellow('\nℹ️  YouTube is not connected — running in local mode.'));
+      console.log(chalk.gray('Videos are generated and exported as MP4 files; uploading stays off until you connect YouTube (npm run walkthrough, step 4).'));
     }
 
     return true;
+  }
+
+  hasYouTubeConnection() {
+    return Boolean(this.credentials?.youtube && this.tokens?.youtube);
   }
 
   async testConnections() {

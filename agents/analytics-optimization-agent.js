@@ -42,6 +42,12 @@ class AnalyticsOptimizationAgent {
   }
 
   async setupAnalyticsAPI() {
+    if (!this.credentials.hasYouTubeConnection?.()) {
+      this.youtube = null;
+      this.youtubeAnalytics = null;
+      this.logger.info('YouTube not connected — analytics sync disabled (local mode)');
+      return;
+    }
     try {
       const auth = this.credentials.getYouTubeAuth();
       this.youtubeAnalytics = google.youtubeAnalytics({ version: 'v2', auth });
@@ -75,6 +81,10 @@ class AnalyticsOptimizationAgent {
   }
 
   async analyzeVideoPerformance(videoId, options = {}) {
+    if (!this.youtube || !this.youtubeAnalytics) {
+      this.logger.info(`Skipping analytics for ${videoId}: YouTube is not connected`);
+      return null;
+    }
     try {
       this.logger.info(`Analyzing performance for video: ${videoId}`);
       

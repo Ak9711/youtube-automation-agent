@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Master Agent Studio</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ff4d5e'/%3E%3Cpath d='M12 9.5v13l11-6.5z' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/studio.css">
+</head>
+<body>
+  <header class="top">
+    <a class="back" href="/">← Dashboard</a>
+    <div>
+      <p class="eyebrow">Master AI Agent</p>
+      <h1>Idea → finished MP4</h1>
+    </div>
+    <span id="yt-status" class="pill">Checking YouTube…</span>
+  </header>
+
+  <main class="grid">
+    <section class="panel" aria-labelledby="new-run-title">
+      <h2 id="new-run-title">New video</h2>
+      <form id="run-form">
+        <label>Topic
+          <input name="topic" maxlength="200" placeholder="Leave empty to let the AI pick a topic">
+        </label>
+        <div class="row">
+          <label>Format
+            <select name="style">
+              <option value="">Auto</option>
+              <option value="tutorial">Tutorial</option>
+              <option value="explainer">Explainer</option>
+              <option value="list">List</option>
+              <option value="review">Review</option>
+              <option value="story">Story</option>
+            </select>
+          </label>
+          <label>Length
+            <select name="length">
+              <option value="short" selected>Short (2–4 min)</option>
+              <option value="medium">Medium (8–12 min)</option>
+              <option value="long">Long (15–20 min)</option>
+            </select>
+          </label>
+        </div>
+        <fieldset>
+          <legend>Post-production</legend>
+          <label class="check"><input type="checkbox" name="burnSubtitles" checked> Burn subtitles into the video</label>
+          <label class="check"><input type="checkbox" name="music" checked> Add background music</label>
+          <div class="row">
+            <label>Music track
+              <select name="musicTrack" id="music-track"><option value="">Generated ambient bed</option></select>
+            </label>
+            <label>Music volume <output id="vol-out">18%</output>
+              <input type="range" name="musicVolume" min="0" max="0.5" step="0.01" value="0.18">
+            </label>
+          </div>
+        </fieldset>
+        <button type="submit" id="start-btn">Create video</button>
+        <p id="form-msg" class="msg" role="status"></p>
+      </form>
+    </section>
+
+    <section class="panel" aria-labelledby="current-title">
+      <div class="panel-head">
+        <h2 id="current-title">Current run</h2>
+        <span id="run-status" class="pill">Idle</span>
+      </div>
+      <p id="run-name" class="run-name">No run selected.</p>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="bar"><span id="bar-fill"></span></div>
+      <p id="bar-label" class="muted">0%</p>
+      <ol id="skills" class="skills"></ol>
+      <div id="result" class="result hidden"></div>
+      <p id="run-error" class="msg error"></p>
+    </section>
+
+    <section class="panel wide" aria-labelledby="history-title">
+      <h2 id="history-title">Finished videos</h2>
+      <div id="history" class="history"><p class="muted">Nothing yet.</p></div>
+    </section>
+  </main>
+
+  <script src="/studio.js"></script>
+</body>
+</html>

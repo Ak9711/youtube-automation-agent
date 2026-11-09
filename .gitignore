@@ -91,3 +91,10 @@ data/thumbnails/
 
 # Claude worktrees
 .claude/worktrees/
+
+# Master AI Agent output (finished MP4 exports and run history)
+data/exports/
+data/master-runs/
+# Your own background-music files (keep the README)
+assets/music/*
+!assets/music/README.md

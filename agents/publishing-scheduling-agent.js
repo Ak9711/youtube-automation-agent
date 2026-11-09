@@ -22,12 +22,26 @@ class PublishingSchedulingAgent {
   }
 
   async setupYouTubeAPI() {
+    if (!this.credentials.hasYouTubeConnection?.()) {
+      this.youtube = null;
+      this.logger.info('YouTube not connected — local mode (videos are exported, not uploaded)');
+      return;
+    }
     try {
       const auth = this.credentials.getYouTubeAuth();
       this.youtube = google.youtube({ version: 'v3', auth });
       this.logger.info('YouTube API initialized');
     } catch (error) {
       this.logger.error('Failed to initialize YouTube API:', error);
+      throw error;
+    }
+  }
+
+  assertYouTubeConnected(action = 'This action') {
+    if (!this.youtube) {
+      const error = new Error(`${action} needs a connected YouTube channel. Run npm run walkthrough (step 4) to connect one; until then, download the MP4 from the dashboard.`);
+      error.status = 409;
+      error.code = 'YOUTUBE_NOT_CONNECTED';
       throw error;
     }
   }
@@ -225,6 +239,7 @@ class PublishingSchedulingAgent {
     };
     if (futureSchedule) videoMetadata.status.publishAt = scheduleEntry.publishTime;
     
+    this.assertYouTubeConnected('Uploading to YouTube');
     // Resolve the file before marking the network upload as attempted.
     const videoStream = await this.getVideoStream(metadata.video.path);
     scheduleEntry.uploadAttempted = true;

@@ -44,6 +44,7 @@ class SystemTest {
       { name: 'API Validation and Security', test: () => this.testAPIValidationAndSecurity() },
       { name: 'Publishing Safety', test: () => this.testPublishingSafety() },
       { name: 'Multi-Provider Credential Validation', test: () => this.testCredentialValidation() },
+      { name: 'Master Agent Chapters & Export Metadata', test: () => this.testMasterAgentHelpers() },
       { name: 'AI Text Service Token Compatibility', test: () => this.testAITextServiceTokenParams() },
       { name: 'Placeholder Scheduling Guard', test: () => this.testPlaceholderSchedulingGuard() },
       { name: 'FFmpeg Resolution', test: () => this.testFFmpegResolution() },
@@ -2636,6 +2637,37 @@ class SystemTest {
     this.logger.info('Publishing safety test completed successfully');
   }
 
+  async testMasterAgentHelpers() {
+    const master = require('./agents/master-ai-agent');
+    if (master.SKILLS.length !== 11) throw new Error(`Expected 11 skills, got ${master.SKILLS.length}`);
+
+    const scenes = [
+      { label: 'Hook', duration: 5 }, { label: 'Intro', duration: 20 },
+      { label: 'Habit 1', duration: 40 }, { label: 'Habit 1', duration: 10 },
+      { label: 'Habit 2', duration: 6 }, { label: 'Habit 3', duration: 50 }, { label: 'Outro', duration: 8 }
+    ];
+    const chapters = master.buildChapters(scenes, 139);
+    if (chapters.length < 3 || chapters[0].start !== 0) throw new Error('Chapters must start at 0:00 and number at least 3');
+    if (chapters.some(c => c.end - c.start < 10)) throw new Error('Every chapter must last at least 10 seconds');
+    if (Math.abs(chapters[chapters.length - 1].end - 139) > 0.01) throw new Error('Chapters must end at the video length');
+    if (master.buildChapters([{ label: 'A', duration: 30 }, { label: 'B', duration: 30 }], 60).length !== 0) {
+      throw new Error('Fewer than 3 valid chapters must produce no chapter list');
+    }
+
+    const description = master.rebuildDescription('Intro text.\n\n0:00 Intro\n5:00 Wrong time\n\nSubscribe!', chapters);
+    if (/5:00 Wrong time/.test(description)) throw new Error('Stale AI timestamps were not removed');
+    if (!description.includes('0:00 Intro') || !description.includes('Subscribe!')) {
+      throw new Error('Description lost text or real chapters');
+    }
+
+    const meta = master.chaptersToFFMetadata(chapters, 'A=B;C');
+    if (!meta.startsWith(';FFMETADATA1') || !meta.includes('title=A\\=B\\;C')) throw new Error('FFmetadata escaping is wrong');
+    if (!master.srtToVtt('1\n00:00:01,500 --> 00:00:02,000\nHi\n').includes('00:00:01.500')) throw new Error('SRT to VTT conversion failed');
+    if (master.slugify('Héllo: World / 2026!') !== 'hello-world-2026') throw new Error('slugify produced an unsafe file name');
+    if (master.formatTimestamp(3725) !== '1:02:05') throw new Error('Timestamp formatting is wrong');
+    return true;
+  }
+
   async testCredentialValidation() {
     const { PROVIDERS, AITextService } = require('./utils/ai-text-service');
     const manager = new CredentialManager();
@@ -2665,10 +2697,20 @@ class SystemTest {
         throw new Error('Missing AI provider was not detected');
       }
 
+      // YouTube is optional (local mode): an AI provider alone is enough to start,
+      // and the missing connection is reported through hasYouTubeConnection().
       manager.credentials = { openai: { apiKey: 'sk-test' } };
-      const missingYouTube = manager.getMissingCredentials();
-      if (missingYouTube.length !== 1 || missingYouTube[0] !== 'youtube') {
-        throw new Error('Missing YouTube credentials were not detected');
+      manager.tokens = {};
+      if (manager.getMissingCredentials().length !== 0) {
+        throw new Error('A missing YouTube connection must not block startup');
+      }
+      if (manager.hasYouTubeConnection()) {
+        throw new Error('A missing YouTube connection was reported as connected');
+      }
+      manager.credentials = { openai: { apiKey: 'sk-test' }, youtube: { client_id: 'x' } };
+      manager.tokens = { youtube: { access_token: 't' } };
+      if (!manager.hasYouTubeConnection()) {
+        throw new Error('A configured YouTube connection was not detected');
       }
 
       // MINIMAX_API_KEY is the H3 video key. It must not count as a text
